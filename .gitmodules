@@ -1,0 +1,3 @@
+[submodule "maketh"]
+	path = maketh
+	url = https://gitlab.com/mfairman/maketh.git
