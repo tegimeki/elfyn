@@ -27,7 +27,7 @@ public:
 // base event class
 class Event {
 public:
-    int fd(); // TODO: abstract identifier for porting
+    int fd() const;
 
 protected:
     Event(int fd, bool owned = false);
@@ -37,23 +37,26 @@ protected:
     bool owned_;
 };
 
-// a readable event source, e.g. socket
-class Readable : public Event {
+// a readable/writable event source, e.g. socket or file
+class Io : public Event {
 public:
-    Readable(int fd, bool owned = false);
+    Io(int fd, bool owned = false);
 
-    size_t pending();
-    int read(void *, size_t);
+    size_t pending() const;
+    int read(void *, size_t) const;
+
+    bool write(const void *, size_t) const;
 
 #ifdef ELFYN_STRING
-    std::string read();
+    std::string read() const;
+    bool write(const std::string &) const;
 #endif
 };
 
 // a waitable event for cross-thread notifications
-class Waitable : public Event {
+class Notifier : public Event {
 public:
-    Waitable();
+    Notifier();
 
     bool notify();
 };
@@ -75,8 +78,8 @@ private:
 //
 
 // watch for events
-bool add(Readable &, Handler);
-bool add(Waitable &, Handler);
+bool add(Io &, Handler);
+bool add(Notifier &, Handler);
 bool add(Timer &, Handler);
 
 // periodic events
@@ -85,7 +88,7 @@ bool every(Time::Interval, Handler);
 // deferred (single-shot) events
 // after(Time::Interval, Handler);
 
-bool remove(Event&);
+bool remove(Event const&);
 
 // run the event-loop (indefinitely, or for some time)
 bool run(Time::Interval timeout = Time::Interval::max());

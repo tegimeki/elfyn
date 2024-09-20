@@ -14,9 +14,9 @@ The `elfyn` namespace declares a few types:
 * `Event`, which is a generic wrapper on a file-descriptor or
 other OS-specific identifier for I/O operations.  There are
 specialized subclasses for:
-  * `Readable`, which is useful on sockets, files, etc.
-  * `Waitable`, which can be used for signaling between threads
-  * `Timer`, offering adjustable intervals for periodic actions
+  * `Io`, which is useful on sockets, files, etc.
+  * `Timer`, providing adjustable intervals for periodic actions
+  * `Notifier`, which can be used for signaling between threads
 
 The application can use `elfyn::add()` for each event to be
 handled, and other methods such as `elfyn::every()` and `elfyn::after()`

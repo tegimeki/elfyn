@@ -21,18 +21,18 @@ int main(int argc, char **argv) {
     });
 
     // an event used to signal between threads
-    elfyn::Waitable waiter;
+    elfyn::Notifier note;
 
-    // a thread which signals to the waiter that it is ready
-    std::thread notifier([&waiter]() {
+    // a thread which signals to the notifier that it is ready
+    std::thread notifier([&note]() {
         while (elfyn::run(500ms)) {
             printf("Notifying...\n");
-            waiter.notify();
+            note.notify();
         }
     });
 
     // when the thread above notifies us, this handler runs
-    elfyn::add(waiter, []() {
+    elfyn::add(note, []() {
         printf("Notified!\n");
     });
 

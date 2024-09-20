@@ -97,7 +97,7 @@ public:
         return add(*timer, fn, /*ack=*/true);
     }
 
-    bool remove(Event &e) {
+    bool remove(const Event &e) {
         return remove(e.fd());
     }
 
@@ -140,6 +140,10 @@ public:
             for (int index = 0; index < fd_count; index++) {
                 epoll_event *e = &events[index];
                 int fd = e->data.fd;
+
+                if (e->events & EPOLLHUP) {
+                    printf("HUP on %d\n", fd);
+                }
 
                 // TODO: handle HUP and other exceptions
 
@@ -196,7 +200,7 @@ Event::Event(int fd, bool owned)
 {
 }
 
-int Event::fd() {
+int Event::fd() const {
     return fd_;
 }
 
@@ -209,25 +213,30 @@ Event::~Event() {
 
 
 /*
- * Readable
+ * Io
  */
-Readable::Readable(int fd, bool owned)
-    : Event(fd, owned) {
-
+Io::Io(int fd, bool owned)
+    : Event(fd, owned)
+{
 }
 
-size_t Readable::pending() {
+size_t Io::pending() const {
     size_t count = 0;
     ::ioctl(fd_, FIONREAD, &count);
     return count;
 }
 
-int Readable::read(void *data, size_t sz) {
+int Io::read(void *data, size_t sz) const {
     return ::read(fd_, data, sz);
 }
 
+bool Io::write(const void *data, size_t length) const {
+    ssize_t wrote = ::write(fd_, data, length);
+    return (size_t) wrote == length;
+}
+
 #ifdef ELFYN_STRING
-std::string Readable::read() {
+std::string Io::read() const {
   std::string str;
   const size_t max_len = 65536; // TODO: make this an option
 
@@ -243,20 +252,26 @@ std::string Readable::read() {
   } else if ((size_t) count < sz) {
     sz = count;
   }
-  str[readSize] = '\0';
+  str[sz] = '\0';
 
   return str;
 }
+
+bool Io::write(const std::string &s) const {
+    return write(s.data(), s.length());
+}
+
 #endif
 
 /*
- * Waitable
+ * Notifier
  */
-Waitable::Waitable()
+Notifier::Notifier()
     : Event(::eventfd(0, EFD_NONBLOCK | EFD_SEMAPHORE), true)
-{}
+{
+}
 
-bool Waitable::notify() {
+bool Notifier::notify() {
     return elfyn::notify(fd_);
 }
 
@@ -292,7 +307,7 @@ Time::Interval Timer::interval() { return interval_; }
 /*
  * Primary Event-Loop Interface
  */
-bool add(Readable &r, Handler fn) {
+bool add(Io &r, Handler fn) {
     return epoll.add(r, fn, false);
 }
 
@@ -300,7 +315,7 @@ bool add(Timer &t, Handler fn) {
     return epoll.add(t, fn, true);
 }
 
-bool add(Waitable &w, Handler fn) {
+bool add(Notifier &w, Handler fn) {
     return epoll.add(w, fn, true);
 }
 
@@ -310,6 +325,10 @@ bool every(Time::Interval interval, Handler fn) {
 
 bool run(Time::Interval timeout) {
     return epoll.run(timeout);
+}
+
+bool remove(const Event &e) {
+    return epoll.remove(e);
 }
 
 bool stop() {
